@@ -1,0 +1,10 @@
+body,header,.URLpart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+header {
+  margin: 20px;
+}
