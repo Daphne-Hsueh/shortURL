@@ -3,36 +3,11 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
-
-const fs = require('fs');
+const fs = require('fs').promises;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// 找到長網址後redirect
-app.get('/short/:code', (req, res) => {
-  let shortUrl = "http://localhost:3000/short/"
-  shortUrl += req.params.code
-  fs.readFile('./data.json', (err, data) => {
-    if (err) {
-      console.error('Error reading file:', err);
-      return res.status(500).send('Error reading file');
-    }
-    let jsonData = JSON.parse(data);
-    let longUrl = findLongUrl(jsonData, shortUrl);
-    console.log('要回傳的長網址',longUrl)
-    if (longUrl) {
-      res.redirect(longUrl); 
-    } else {
-      res.status(404).send('URL not found');
-    }
-  })
-})
-
-//從短網址找長網址
+//由短網址找長網址進行redirect
 function findLongUrl(array, shortUrl) {
   for (const obj of array) {
     for (const key in obj) {
@@ -44,57 +19,45 @@ function findLongUrl(array, shortUrl) {
   return null; 
 }
 
-//從前端拿到長網址，比對長網址唯一性後，生成短網址回傳前端
-app.post('/return-short',  (req, res) => {
-  const {longUrl} = req.body;
-  
-  fs.readFile('./data.json', async (err, data) => {
-  if (err) {
-      return res.status(500).send('Error reading file');
-    }
-    
-    let jsonData = JSON.parse(data);
-    let shortUrl = ""
-    let ifUnique = await ckLongUrl(longUrl)
-    if (ifUnique === true){
-      shortUrl = createShortUrl()
-      jsonData.push({[longUrl]:[shortUrl]});
-      fs.writeFile('./data.json', JSON.stringify(jsonData, null, 2), (err) => {
-        if (err) {                    
-          console.error('Error writing file', err);
-          res.status(500).send('Error writing file');
-          return; 
-        }
-        console.log('new short URL saved successfully')
-        return res.status(200).json({shortUrl})
-      });
-    } else if (ifUnique === false) {
-      shortUrl = jsonData.find(obj => obj.hasOwnProperty(longUrl))[longUrl];
-      return res.status(200).json({shortUrl})
-    }
-  });
-});
+//撈JSON裡的資料
+async function readJson() {
+  try {
+    const data = await fs.readFile('./data.json', 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Error reading file:', err);
+    throw err; 
+  }
+}
+
+//資料（生成的新短網址）寫進json
+async function writeJson(data) {
+    return fs.writeFile('./data.json', JSON.stringify(data, null, 2));
+}
 
 //確認長網址是否唯一
-function ckLongUrl(longUrl) {
-  return new Promise((resolve, reject) => {
-    fs.readFile('./data.json', (err, data) => {
-      if (err) {
-        console.error("Error reading file:", err);
-        reject(err);
-      } else {
-        const jsonData = JSON.parse(data);
-        const isUnique = !jsonData.some((item) => item.hasOwnProperty(longUrl));
-        resolve(isUnique);
+async function checkUniqueLongUrl(longUrl) {
+  let jsonData = await readJson()
+  const isUnique = !jsonData.some((item) => item.hasOwnProperty(longUrl));
+  return isUnique
+}
+
+//確認生成的短網址是否唯一
+function checkShortUnique(array, shortUrl) {
+  for (const obj of array) {
+    for (const key in obj) {
+      let value = obj[key][0];
+      if (value === shortUrl) {
+        return false; 
       }
-    });
-  });
+    }
+  }
+    return true; 
 }
 
 //生成短網址
 function createShortUrl(){
-  let newShortUrl = "http://localhost:3000/short/"
-  return newShortUrl += randomString(5)
+  return "http://localhost:3000/short/" + randomString(5)
 }
 
 //生成五碼亂碼
@@ -106,6 +69,50 @@ function randomString(length) {
   }
   return random
 }
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+//從前端拿到長網址，確認長網址先前是否用過，生成新短or找舊短回傳前端
+app.post('/return-short', async (req, res) => {
+  const { longUrl } = req.body;
+  const jsonData = await readJson()
+  let shortUrl;
+  let isUniqueShortUrl;
+  const isUniqueLongUrl = await checkUniqueLongUrl(longUrl)
+  if (!isUniqueLongUrl) {
+    shortUrl = jsonData.find(obj => obj.hasOwnProperty(longUrl))[longUrl];
+    return res.status(200).json({ shortUrl });
+  }
+
+  do {
+    shortUrl = createShortUrl();
+    isShortUrlExist = checkShortUnique(jsonData, shortUrl)
+  } while (!isShortUrlExist);
+  jsonData.push({ [longUrl]: [shortUrl] });
+  try {
+    await writeJson(jsonData, shortUrl)
+  } catch (error) {
+      console.log(error)
+      return res.status(500).json({msg: "Error writing file"})  
+  }
+  return res.status(200).json({shortUrl})
+});
+
+// 找到長網址後redirect
+app.get('/short/:code', async(req, res) => {
+  const shortUrl = "http://localhost:3000/short/"+ req.params.code
+  let jsonData = await readJson()
+  let longUrl = findLongUrl(jsonData, shortUrl);
+  console.log('要回傳的長網址',longUrl)
+  if (longUrl) {
+    res.redirect(longUrl); 
+  } else {
+    res.status(404).send('URL not found');
+  }
+})
+
 
 app.listen(port, () => {
   console.log(`Express server is running on http://localhost:${port}`);

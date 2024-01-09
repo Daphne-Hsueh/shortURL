@@ -1,10 +1,9 @@
 const URLpart = document.querySelector('.URLpart');
 
-
 function renderLongURL() {
   URLpart.innerHTML =  `
   <form onsubmit="triggerShorten(event)">
-      <input type="url" size="30" id="input" placeholder="Input original URL here">
+      <input type="url" size="30" id="input" placeholder="Insert original URL here">
       <button type="submit" class="shorten-button">shorten</button>
     </form>`
 }
@@ -43,7 +42,6 @@ async function returnShortUrl(longUrl) {
       console.error('Error:', error);
   }
 }
-
 
 function copyString(string) {
   navigator.clipboard.writeText(string).then(() => {

@@ -1,27 +1,7 @@
 [
   {
     "https://google.com": [
-      "http://localhost:3000/short/2KP91"
-    ]
-  },
-  {
-    "https://www.altcademy.com/blog/how-to-get-user-input-in-javascript/": [
-      "http://localhost:3000/short/qGDm9"
-    ]
-  },
-  {
-    "https://www.fooish.com/html/form.html": [
-      "http://localhost:3000/short/oS9Jt"
-    ]
-  },
-  {
-    "https://dylan237.github.io/nodejs-readfile-and-writefile.html": [
-      "http://localhost:3000/short/FU5eV"
-    ]
-  },
-  {
-    "http://localhost:3000/": [
-      "http://localhost:3000/short/6eQC8"
+      "http://localhost:3000/short/uOwoQ"
     ]
   }
 ]
