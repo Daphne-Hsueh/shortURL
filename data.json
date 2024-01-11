@@ -3,5 +3,10 @@
     "https://google.com": [
       "http://localhost:3000/short/uOwoQ"
     ]
+  },
+  {
+    "https://www.youtube.com/": [
+      "http://localhost:3000/short/oDyVH"
+    ]
   }
 ]
